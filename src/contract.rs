@@ -1,11 +1,12 @@
-use cosmwasm_std::{Api, Binary, Env, Extern, HandleResponse, InitResponse, Querier, StdError, StdResult, Storage, to_binary};
+use cosmwasm_std::{Api, Binary, Env, Extern, HandleResponse, InitResponse, Querier, StdError, StdResult, Storage};
 
-use crate::msg::{HandleMsg, InitMsg, QueryAnswer, QueryMsg};
+use crate::msg::{EntropyHandleMsg, HandleMsg, InitMsg};
 use crate::state::{load, save, State};
 
 use sha2::{Digest};
-use x25519_dalek::{PublicKey, StaticSecret};
 use std::convert::TryInto;
+
+use secret_toolkit::utils::{HandleCallback};
 
 
 pub const STATE_KEY: &[u8] = b"state";
@@ -50,7 +51,7 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     msg: HandleMsg,
 ) -> StdResult<HandleResponse> {
     match msg {
-        HandleMsg::Entropy {entropy } => gather_entropy(deps, env, entropy),
+        HandleMsg::Entropy {entropy , recipient_hash } => gather_entropy(deps, env, recipient_hash, entropy),
     }
 }
 
@@ -59,9 +60,14 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
 //---------------------KEY FUNCTIONS------------------------------------------------------------------------------------------------
 
 
+
+
+
+
 pub fn gather_entropy<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
-    _env: Env,
+    env: Env,
+    recipient_hash: String,
     entropy: String
 ) -> StdResult<HandleResponse> {
 
@@ -69,82 +75,44 @@ pub fn gather_entropy<S: Storage, A: Api, Q: Querier>(
     //Load state
     let mut state: State = load(&mut deps.storage, STATE_KEY)?;
 
-    //Converts new entropy and old key into a new hash
-    let new_data: String = format!("{:?}+{}", state.seed, entropy);
+    //Stored Entropy
+    let new_data: String = format!("{:?}+{}+{}+{}+{}", state.seed, entropy, &env.block.height, &env.block.time, &env.message.sender);
 
     let hashvalue = sha2::Sha256::digest(new_data.as_bytes());
     let hash: [u8; 32] = hashvalue.as_slice().try_into().expect("Wrong length");
 
+    //Exported Entropy
+    let export_data: String = format!("{:?}+{}", state.seed, entropy);
+
+    let export_hashvalue = sha2::Sha256::digest(export_data.as_bytes());
+    let export_hash: [u8; 32] = export_hashvalue.as_slice().try_into().expect("Wrong length");
+
+
+
+    //Save new entropy
     state.seed = hash;
 
-    //Save State
     save(&mut deps.storage, STATE_KEY, &state)?;
 
 
-    Ok(HandleResponse::default())
+    //Format and export entropy to sender
+    let entropy_msg = EntropyHandleMsg::ReceiveEntropy {
+        entropy: export_hash,
+    };
 
-
-}
-
-
-
-
-
-
-//-------------------------------------------QUERIES----------------------------------------------------------------------
-
-
-pub fn query<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-    msg: QueryMsg,
-) -> StdResult<Binary> {
-   match msg {
-    QueryMsg::Info { } => get_info(deps),
-    QueryMsg::Keypair { entropy} => get_key(deps, entropy)
-   }
-    
-}
+    let cosmos_msg = entropy_msg.to_cosmos_msg(
+        recipient_hash,
+        env.message.sender,
+        None,
+    )?;
 
 
 
-pub fn get_info<S: Storage, A: Api, Q: Querier>(
-    _deps: &Extern<S, A, Q>,
-) -> StdResult<Binary> {
-
-    let mut data = String::new();
-    data.push_str("Made by: Lumi @ Trivium");
-    
-    to_binary(&QueryAnswer::Info{ info: data})
-
-    
-}
+    Ok(HandleResponse {
+        messages: vec![cosmos_msg],
+        log: vec![],
+        data: None,
+    })
 
 
-pub fn get_key<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-    entropy: String
-) -> StdResult<Binary> {
-
-    if entropy.len() < 1 {
-        return Err(StdError::generic_err("YOU MUST ENTER SOME ENTROPY"));
-    }
-
-    //Load state
-    let state: State = load(&deps.storage, STATE_KEY)?;
-
-
-    //Converts new entropy and old key into a new hash
-    let new_data: String = format!("{:?}+{}", state.seed, entropy);
-
-    let hashvalue = sha2::Sha256::digest(new_data.as_bytes());
-    let hash: [u8; 32] = hashvalue.as_slice().try_into().expect("Wrong length");
-
-     //Generate pub and priv key
-     let con_priv_key = StaticSecret::from(hash);
-     let con_pub_key = PublicKey::from(&con_priv_key);
-
-    
-    to_binary(&QueryAnswer::Keypair{ pubkey: con_pub_key.to_bytes(), privkey: con_priv_key.to_bytes()})
-
-    
 }

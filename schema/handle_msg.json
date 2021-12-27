@@ -11,10 +11,14 @@
         "entropy": {
           "type": "object",
           "required": [
-            "entropy"
+            "entropy",
+            "recipient_hash"
           ],
           "properties": {
             "entropy": {
+              "type": "string"
+            },
+            "recipient_hash": {
               "type": "string"
             }
           }

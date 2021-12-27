@@ -1,6 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use secret_toolkit::utils::{HandleCallback};
 
 
 
@@ -14,6 +15,7 @@ pub struct InitMsg {
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
     Entropy {
+        recipient_hash: String,
         entropy: String
     }
 
@@ -22,8 +24,6 @@ pub enum HandleMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum HandleAnswer {
-   
-
 }
 
 
@@ -31,25 +31,11 @@ pub enum HandleAnswer {
 
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum QueryMsg {
-    Info {},
-    Keypair {
-        entropy: String
-    }
+pub enum EntropyHandleMsg {
+    ReceiveEntropy { entropy: [u8; 32] },
 }
 
-/// Responses from query function
-#[derive(Serialize, Deserialize, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum QueryAnswer {
-    Info {
-        info: String
-    },
-    Keypair {
-        pubkey: [u8; 32],
-        privkey: [u8; 32]
-    }
+impl HandleCallback for EntropyHandleMsg {
+    const BLOCK_SIZE: usize = 256;
 }
-
 
