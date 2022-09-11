@@ -1,8 +1,8 @@
 [package]
 name = "reminder"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["luke"]
-edition = "2018"
+edition = "2021"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
@@ -30,17 +30,20 @@ overflow-checks = true
 default = []
 # for quicker tests, cargo test --lib
 # for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces"]
+#backtraces = ["cosmwasm-std/backtraces"]
 #debug-print = ["cosmwasm-std/debug-print"]
 
 [dependencies]
-cosmwasm-schema = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.0.0" }
-cosmwasm-std = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.0.0" }
-cosmwasm-storage = { git = "https://github.com/enigmampc/SecretNetwork", tag = "v1.0.0" }
-schemars = "0.7"
+cosmwasm-std = { git = "https://github.com/scrtlabs/cosmwasm/", branch = "secret" }
+cosmwasm-storage = { git = "https://github.com/scrtlabs/cosmwasm/", branch = "secret" }
+schemars = "0.8.8"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 snafu = { version = "0.6.3" }
+secret-toolkit = { git = "https://github.com/scrtlabs/secret-toolkit/", branch = "cosmwasm-v1.0", default-features = false, features = ["utils", "storage", "serialization", "viewing-key"] }
+thiserror = { version = "1.0.31" }
 
 sha2 = { version = "0.9.1", default-features = false }
 
-secret-toolkit = { git = "https://github.com/enigmampc/secret-toolkit" }
+[dev-dependencies]
+cosmwasm-schema = { git = "https://github.com/scrtlabs/cosmwasm/", branch = "secret" }
+
